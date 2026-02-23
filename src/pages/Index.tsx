@@ -1,10 +1,10 @@
 import { useState, useEffect } from "react";
 import { collection, query, where, onSnapshot } from "firebase/firestore";
 import { db } from "@/lib/firebase";
-import { Report } from "@/types";
+import { Report, CORRUPTION_TYPES } from "@/types";
 import ReportCard from "@/components/ReportCard";
 import SkeletonCard from "@/components/SkeletonCard";
-import { Navigation, Filter } from "lucide-react";
+import { Navigation } from "lucide-react";
 import { toast } from "sonner";
 
 export default function Index() {
@@ -13,7 +13,7 @@ export default function Index() {
   const [nearbyMode, setNearbyMode] = useState(false);
   const [userLat, setUserLat] = useState<number | null>(null);
   const [userLng, setUserLng] = useState<number | null>(null);
-  const [filterType, setFilterType] = useState("");
+  const [filterType, setFilterType] = useState("all");
 
   useEffect(() => {
     const q = query(
@@ -69,70 +69,70 @@ export default function Index() {
           getDistance(userLat, userLng, b.location.lat, b.location.lng)
       );
   }
-  if (filterType) {
+  if (filterType !== "all") {
     filtered = filtered.filter((r) => r.corruptionType === filterType);
   }
 
   return (
-    <div className="p-4 space-y-3 pb-2">
-      <div className="flex items-center gap-2">
-        <h2 className="text-base font-bold flex-1">সব রিপোর্ট</h2>
+    <div className="pb-2">
+      {/* Always-open filter bar like index.html */}
+      <div className="sticky top-0 z-10 bg-card border-b border-border px-3 py-2.5 flex items-center gap-2 overflow-x-auto scrollbar-hide">
+        <button
+          onClick={() => setFilterType("all")}
+          className={`text-[12px] px-3 py-1.5 rounded-full border font-medium whitespace-nowrap transition-colors ${
+            filterType === "all"
+              ? "bg-primary border-primary text-primary-foreground"
+              : "border-border text-muted-foreground bg-card"
+          }`}
+        >
+          সব
+        </button>
+        {CORRUPTION_TYPES.map((type) => (
+          <button
+            key={type}
+            onClick={() => setFilterType(type === filterType ? "all" : type)}
+            className={`text-[12px] px-3 py-1.5 rounded-full border font-medium whitespace-nowrap transition-colors ${
+              type === filterType
+                ? "bg-primary border-primary text-primary-foreground"
+                : "border-border text-muted-foreground bg-card"
+            }`}
+          >
+            {type}
+          </button>
+        ))}
         <button
           onClick={handleNearby}
-          className={`flex items-center gap-1 text-xs px-3 py-1.5 rounded-full border transition-colors ${
-            nearbyMode ? "bg-primary text-primary-foreground border-primary" : "border-border text-muted-foreground"
+          className={`flex items-center gap-1 text-[12px] px-3 py-1.5 rounded-full font-semibold whitespace-nowrap ml-auto shrink-0 ${
+            nearbyMode
+              ? "bg-primary text-primary-foreground"
+              : "bg-primary text-primary-foreground"
           }`}
         >
           <Navigation size={12} />
-          কাছাকাছি
-        </button>
-        <button
-          onClick={() => setFilterType(filterType ? "" : "ঘুষ")}
-          className={`flex items-center gap-1 text-xs px-3 py-1.5 rounded-full border transition-colors ${
-            filterType ? "bg-primary text-primary-foreground border-primary" : "border-border text-muted-foreground"
-          }`}
-        >
-          <Filter size={12} />
-          ফিল্টার
+          নিকটবর্তী
         </button>
       </div>
 
-      {filterType && (
-        <div className="flex gap-1.5 flex-wrap">
-          {["সরকারি দুর্নীতি", "ঘুষ", "জমি দখল", "পুলিশ দুর্নীতি", "অন্যান্য"].map((type) => (
-            <button
-              key={type}
-              onClick={() => setFilterType(type === filterType ? "" : type)}
-              className={`text-[10px] px-2.5 py-1 rounded-full border transition-colors ${
-                type === filterType
-                  ? "bg-primary text-primary-foreground border-primary"
-                  : "border-border text-muted-foreground"
-              }`}
-            >
-              {type}
-            </button>
-          ))}
-        </div>
-      )}
-
-      {loading ? (
-        <div className="space-y-3">
-          {[1, 2, 3].map((i) => (
-            <SkeletonCard key={i} />
-          ))}
-        </div>
-      ) : filtered.length === 0 ? (
-        <div className="text-center py-16 text-muted-foreground">
-          <p className="text-lg">কোনো রিপোর্ট পাওয়া যায়নি</p>
-          <p className="text-sm mt-1">প্রথম রিপোর্ট জমা দিন!</p>
-        </div>
-      ) : (
-        <div className="space-y-3">
-          {filtered.map((report) => (
-            <ReportCard key={report.id} report={report} />
-          ))}
-        </div>
-      )}
+      <div className="p-4 space-y-3">
+        {loading ? (
+          <div className="space-y-3">
+            {[1, 2, 3].map((i) => (
+              <SkeletonCard key={i} />
+            ))}
+          </div>
+        ) : filtered.length === 0 ? (
+          <div className="text-center py-16 text-muted-foreground">
+            <p className="text-lg">কোনো রিপোর্ট পাওয়া যায়নি</p>
+            <p className="text-sm mt-1">প্রথম রিপোর্ট জমা দিন!</p>
+          </div>
+        ) : (
+          <div className="space-y-3">
+            {filtered.map((report) => (
+              <ReportCard key={report.id} report={report} />
+            ))}
+          </div>
+        )}
+      </div>
     </div>
   );
 }

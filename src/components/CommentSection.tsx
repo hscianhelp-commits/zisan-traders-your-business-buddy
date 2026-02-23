@@ -13,7 +13,7 @@ import {
 import { db } from "@/lib/firebase";
 import { useAuth } from "@/contexts/AuthContext";
 import { Comment } from "@/types";
-import { Send, Reply, Trash2, Edit2, X, User } from "lucide-react";
+import { Send, X, User } from "lucide-react";
 import { toast } from "sonner";
 
 interface CommentSectionProps {
@@ -61,7 +61,7 @@ export default function CommentSection({ reportId }: CommentSectionProps) {
 
   const handleDelete = async (id: string) => {
     await deleteDoc(doc(db, "comments", id));
-    toast.success("মন্তব্য মুছে ফেলা হয়েছে");
+    toast.success("Comment deleted");
   };
 
   const handleEdit = async (id: string) => {
@@ -69,7 +69,7 @@ export default function CommentSection({ reportId }: CommentSectionProps) {
     await updateDoc(doc(db, "comments", id), { text: editText.trim() });
     setEditingId(null);
     setEditText("");
-    toast.success("মন্তব্য আপডেট হয়েছে");
+    toast.success("Comment updated");
   };
 
   const rootComments = comments.filter((c) => !c.parentId);
@@ -84,13 +84,11 @@ export default function CommentSection({ reportId }: CommentSectionProps) {
     return (
       <div key={comment.id} className={depth > 0 ? "pl-10 mt-1.5" : ""}>
         <div className="flex gap-2 items-start">
-          {/* Avatar */}
           <div className="w-8 h-8 rounded-full bg-muted flex items-center justify-center shrink-0 mt-0.5">
             <User size={14} className="text-muted-foreground" />
           </div>
 
           <div className="flex-1 min-w-0">
-            {/* Comment Bubble */}
             {editingId === comment.id ? (
               <div className="flex gap-1.5 items-center">
                 <input
@@ -109,12 +107,11 @@ export default function CommentSection({ reportId }: CommentSectionProps) {
               </div>
             ) : (
               <div className="bg-muted rounded-2xl rounded-tl-sm px-3 py-2 inline-block max-w-full">
-                <p className="text-[12px] font-bold text-foreground">বেনামী</p>
+                <p className="text-[12px] font-bold text-foreground">Anonymous</p>
                 <p className="text-[13px] leading-relaxed break-words">{comment.text}</p>
               </div>
             )}
 
-            {/* Meta Actions */}
             {editingId !== comment.id && (
               <div className="flex items-center gap-3 mt-1 px-1">
                 <span className="text-[11px] text-muted-foreground">{date}</span>
@@ -126,7 +123,7 @@ export default function CommentSection({ reportId }: CommentSectionProps) {
                     }}
                     className="text-[11px] font-bold text-muted-foreground hover:text-primary"
                   >
-                    উত্তর দিন
+                    Reply
                   </button>
                 )}
                 {canModify && (
@@ -138,26 +135,25 @@ export default function CommentSection({ reportId }: CommentSectionProps) {
                       }}
                       className="text-[11px] font-bold text-muted-foreground"
                     >
-                      সম্পাদনা
+                      Edit
                     </button>
                     <button
                       onClick={() => handleDelete(comment.id)}
                       className="text-[11px] font-bold text-destructive"
                     >
-                      মুছুন
+                      Delete
                     </button>
                   </>
                 )}
               </div>
             )}
 
-            {/* Reply Input for this comment */}
             {replyTo === comment.id && (
               <div className="flex items-center gap-2 mt-2">
                 <input
                   value={text}
                   onChange={(e) => setText(e.target.value)}
-                  placeholder="উত্তর লিখুন..."
+                  placeholder="Write a reply..."
                   className="flex-1 bg-muted border-none rounded-full px-3 py-2 text-[13px] outline-none focus:bg-border/60"
                   autoFocus
                   onKeyDown={(e) => e.key === "Enter" && handleSubmit()}
@@ -180,7 +176,6 @@ export default function CommentSection({ reportId }: CommentSectionProps) {
           </div>
         </div>
 
-        {/* Nested Replies */}
         {replies.length > 0 && (
           <div className="border-l-2 border-primary/20 ml-4 mt-1">
             {replies.map((r) => renderComment(r, depth + 1))}
@@ -208,18 +203,16 @@ export default function CommentSection({ reportId }: CommentSectionProps) {
 
   return (
     <div className="space-y-3">
-      <p className="text-sm font-bold">মন্তব্যসমূহ ({comments.length})</p>
+      <p className="text-sm font-bold">Comments ({comments.length})</p>
 
-      {/* Comment List */}
       <div className="space-y-3">
         {rootComments.length > 0 ? (
           rootComments.map((c) => renderComment(c, 0))
         ) : (
-          <p className="text-[13px] text-muted-foreground">কোনো মন্তব্য নেই।</p>
+          <p className="text-[13px] text-muted-foreground">No comments yet.</p>
         )}
       </div>
 
-      {/* Main Comment Input */}
       {!replyTo && (
         <div className="flex items-center gap-2 mt-2">
           <div className="w-8 h-8 rounded-full bg-muted flex items-center justify-center shrink-0">
@@ -228,7 +221,7 @@ export default function CommentSection({ reportId }: CommentSectionProps) {
           <input
             value={text}
             onChange={(e) => setText(e.target.value)}
-            placeholder={user ? "মন্তব্য লিখুন..." : "লগইন করুন"}
+            placeholder={user ? "Write a comment..." : "Login to comment"}
             disabled={!user}
             className="flex-1 bg-muted border-none rounded-full px-4 py-2.5 text-[13px] outline-none focus:bg-border/60 disabled:opacity-50"
             onKeyDown={(e) => e.key === "Enter" && handleSubmit()}
@@ -243,17 +236,16 @@ export default function CommentSection({ reportId }: CommentSectionProps) {
         </div>
       )}
 
-      {/* Login Prompt */}
       {!user && (
         <div className="bg-accent rounded-xl p-3 flex items-center gap-3">
           <p className="text-[13px] text-accent-foreground font-medium flex-1">
-            মন্তব্য করতে লগইন করুন
+            Login to comment
           </p>
           <a
             href="/login"
             className="bg-primary text-primary-foreground px-4 py-1.5 rounded-lg text-[13px] font-bold whitespace-nowrap"
           >
-            লগইন
+            Login
           </a>
         </div>
       )}

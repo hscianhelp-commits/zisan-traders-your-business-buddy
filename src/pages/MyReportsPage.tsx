@@ -10,16 +10,16 @@ import { MapPin, Edit2, Trash2 } from "lucide-react";
 import { toast } from "sonner";
 
 const STATUS_TABS = [
-  { key: "all", label: "সব" },
-  { key: "pending", label: "অপেক্ষমাণ" },
-  { key: "approved", label: "অনুমোদিত" },
-  { key: "rejected", label: "প্রত্যাখ্যাত" },
+  { key: "all", label: "All" },
+  { key: "pending", label: "Pending" },
+  { key: "approved", label: "Approved" },
+  { key: "rejected", label: "Rejected" },
 ] as const;
 
 const statusLabels: Record<string, string> = {
-  pending: "অপেক্ষমাণ",
-  approved: "অনুমোদিত",
-  rejected: "প্রত্যাখ্যাত",
+  pending: "Pending",
+  approved: "Approved",
+  rejected: "Rejected",
 };
 
 const statusStyles: Record<string, string> = {
@@ -56,7 +56,7 @@ export default function MyReportsPage() {
     e.stopPropagation();
     if (!confirm("রিপোর্টটি মুছে ফেলতে চান?")) return;
     await deleteDoc(doc(db, "reports", reportId));
-    toast.success("রিপোর্ট মুছে ফেলা হয়েছে");
+    toast.success("Report deleted");
   };
 
   const filtered = reports.filter((r) => activeTab === "all" || r.status === activeTab);
@@ -68,13 +68,13 @@ export default function MyReportsPage() {
           <path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z" stroke="currentColor" strokeWidth="1.5" />
           <polyline points="14,2 14,8 20,8" stroke="currentColor" strokeWidth="1.5" />
         </svg>
-        <p className="text-lg font-bold mb-2">আমার রিপোর্টসমূহ</p>
-        <p className="text-sm text-muted-foreground mb-6">রিপোর্ট ট্র্যাক করতে লগইন করুন</p>
+        <p className="text-lg font-bold mb-2">My Reports</p>
+        <p className="text-sm text-muted-foreground mb-6">Login to track your reports</p>
         <button
           onClick={() => navigate("/login")}
           className="bg-primary text-primary-foreground px-8 py-3 rounded-xl font-bold text-base"
         >
-          লগইন করুন
+          Login
         </button>
       </div>
     );
@@ -84,7 +84,7 @@ export default function MyReportsPage() {
     <div className="pb-2">
       {/* Header */}
       <div className="flex items-center justify-between px-4 py-4">
-        <h2 className="text-lg font-bold">আমার রিপোর্টসমূহ</h2>
+        <h2 className="text-lg font-bold">My Reports</h2>
       </div>
 
       {/* Status Filter Tabs */}
@@ -116,7 +116,7 @@ export default function MyReportsPage() {
           <svg width="64" height="64" fill="none" viewBox="0 0 24 24" className="text-border mb-4">
             <path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z" stroke="currentColor" strokeWidth="1.5" />
           </svg>
-          <p className="text-base font-semibold text-muted-foreground">কোনো রিপোর্ট নেই</p>
+          <p className="text-base font-semibold text-muted-foreground">No reports found</p>
         </div>
       ) : (
         <div className="space-y-3 px-4">
@@ -130,7 +130,6 @@ export default function MyReportsPage() {
                 onClick={() => navigate(`/reports/${report.id}`)}
                 className="bg-card rounded-2xl shadow-sm overflow-hidden border border-border cursor-pointer active:scale-[0.98] transition-transform"
               >
-                {/* Card Header */}
                 <div className="p-3 pb-2 flex justify-between items-start">
                   <div className="flex-1 min-w-0">
                     <p className="text-[13px] font-bold">{report.corruptionType || "অন্যান্য"}</p>
@@ -148,14 +147,12 @@ export default function MyReportsPage() {
                   </span>
                 </div>
 
-                {/* Evidence */}
                 {report.evidenceBase64?.length > 0 && (
                   <div onClick={(e) => e.stopPropagation()}>
                     <ImageCarousel images={report.evidenceBase64} />
                   </div>
                 )}
 
-                {/* Location */}
                 {report.location?.address && (
                   <div className="flex items-center gap-1 px-3 py-1.5 text-[11px] text-muted-foreground">
                     <MapPin size={12} className="text-primary shrink-0" />
@@ -163,18 +160,16 @@ export default function MyReportsPage() {
                   </div>
                 )}
 
-                {/* Actions */}
                 <div className="flex gap-2 px-3 pb-3" onClick={(e) => e.stopPropagation()}>
                   {report.status === "pending" && (
                     <button
                       onClick={(e) => {
                         e.stopPropagation();
-                        // Could open edit modal
                       }}
                       className="flex-1 flex items-center justify-center gap-1.5 py-2 rounded-xl bg-muted text-foreground text-[13px] font-semibold"
                     >
                       <Edit2 size={14} />
-                      সম্পাদনা
+                      Edit
                     </button>
                   )}
                   <button
@@ -182,7 +177,7 @@ export default function MyReportsPage() {
                     className="flex-1 flex items-center justify-center gap-1.5 py-2 rounded-xl bg-destructive/10 text-destructive text-[13px] font-semibold"
                   >
                     <Trash2 size={14} />
-                    মুছুন
+                    Delete
                   </button>
                 </div>
               </div>
