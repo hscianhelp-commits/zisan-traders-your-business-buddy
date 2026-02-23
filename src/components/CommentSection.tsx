@@ -13,7 +13,7 @@ import {
 import { db } from "@/lib/firebase";
 import { useAuth } from "@/contexts/AuthContext";
 import { Comment } from "@/types";
-import { Send, Reply, Trash2, Edit2, X } from "lucide-react";
+import { Send, Reply, Trash2, Edit2, X, User } from "lucide-react";
 import { toast } from "sonner";
 
 interface CommentSectionProps {
@@ -77,109 +77,186 @@ export default function CommentSection({ reportId }: CommentSectionProps) {
   const renderComment = (comment: Comment, depth: number) => {
     const replies = comments.filter((c) => c.parentId === comment.id);
     const canModify = user?.uid === comment.userId || isAdmin;
+    const date = comment.createdAt?.toDate
+      ? comment.createdAt.toDate().toLocaleDateString("bn-BD")
+      : "";
 
     return (
-      <div key={comment.id} className={`${depth > 0 ? "ml-4 border-l-2 border-border pl-3" : ""}`}>
-        <div className="py-2">
-          <div className="flex items-start justify-between gap-2">
-            <div className="flex-1">
-              <span className="text-[10px] font-semibold text-muted-foreground">বেনামী ব্যবহারকারী</span>
-              {editingId === comment.id ? (
-                <div className="flex gap-1 mt-1">
-                  <input
-                    value={editText}
-                    onChange={(e) => setEditText(e.target.value)}
-                    className="flex-1 text-sm border border-input rounded-md px-2 py-1 bg-background"
-                  />
-                  <button onClick={() => handleEdit(comment.id)} className="text-primary p-1">
-                    <Send size={14} />
-                  </button>
-                  <button onClick={() => setEditingId(null)} className="text-muted-foreground p-1">
-                    <X size={14} />
-                  </button>
-                </div>
-              ) : (
-                <p className="text-sm mt-0.5">{comment.text}</p>
-              )}
-            </div>
-            <div className="flex gap-1 shrink-0">
-              {user && (
-                <button
-                  onClick={() => {
-                    setReplyTo(comment.id);
-                    setText("");
-                  }}
-                  className="p-1 text-muted-foreground"
-                >
-                  <Reply size={12} />
+      <div key={comment.id} className={depth > 0 ? "pl-10 mt-1.5" : ""}>
+        <div className="flex gap-2 items-start">
+          {/* Avatar */}
+          <div className="w-8 h-8 rounded-full bg-muted flex items-center justify-center shrink-0 mt-0.5">
+            <User size={14} className="text-muted-foreground" />
+          </div>
+
+          <div className="flex-1 min-w-0">
+            {/* Comment Bubble */}
+            {editingId === comment.id ? (
+              <div className="flex gap-1.5 items-center">
+                <input
+                  value={editText}
+                  onChange={(e) => setEditText(e.target.value)}
+                  className="flex-1 bg-muted border border-primary rounded-xl px-3 py-2 text-[13px] outline-none"
+                  autoFocus
+                  onKeyDown={(e) => e.key === "Enter" && handleEdit(comment.id)}
+                />
+                <button onClick={() => handleEdit(comment.id)} className="text-primary p-1.5">
+                  <Send size={14} />
                 </button>
-              )}
-              {canModify && (
-                <>
+                <button onClick={() => setEditingId(null)} className="text-muted-foreground p-1.5">
+                  <X size={14} />
+                </button>
+              </div>
+            ) : (
+              <div className="bg-muted rounded-2xl rounded-tl-sm px-3 py-2 inline-block max-w-full">
+                <p className="text-[12px] font-bold text-foreground">বেনামী</p>
+                <p className="text-[13px] leading-relaxed break-words">{comment.text}</p>
+              </div>
+            )}
+
+            {/* Meta Actions */}
+            {editingId !== comment.id && (
+              <div className="flex items-center gap-3 mt-1 px-1">
+                <span className="text-[11px] text-muted-foreground">{date}</span>
+                {user && (
                   <button
                     onClick={() => {
-                      setEditingId(comment.id);
-                      setEditText(comment.text);
+                      setReplyTo(comment.id);
+                      setText("");
                     }}
-                    className="p-1 text-muted-foreground"
+                    className="text-[11px] font-bold text-muted-foreground hover:text-primary"
                   >
-                    <Edit2 size={12} />
+                    উত্তর দিন
                   </button>
-                  <button onClick={() => handleDelete(comment.id)} className="p-1 text-destructive">
-                    <Trash2 size={12} />
-                  </button>
-                </>
-              )}
-            </div>
+                )}
+                {canModify && (
+                  <>
+                    <button
+                      onClick={() => {
+                        setEditingId(comment.id);
+                        setEditText(comment.text);
+                      }}
+                      className="text-[11px] font-bold text-muted-foreground"
+                    >
+                      সম্পাদনা
+                    </button>
+                    <button
+                      onClick={() => handleDelete(comment.id)}
+                      className="text-[11px] font-bold text-destructive"
+                    >
+                      মুছুন
+                    </button>
+                  </>
+                )}
+              </div>
+            )}
+
+            {/* Reply Input for this comment */}
+            {replyTo === comment.id && (
+              <div className="flex items-center gap-2 mt-2">
+                <input
+                  value={text}
+                  onChange={(e) => setText(e.target.value)}
+                  placeholder="উত্তর লিখুন..."
+                  className="flex-1 bg-muted border-none rounded-full px-3 py-2 text-[13px] outline-none focus:bg-border/60"
+                  autoFocus
+                  onKeyDown={(e) => e.key === "Enter" && handleSubmit()}
+                />
+                <button
+                  onClick={handleSubmit}
+                  disabled={!text.trim()}
+                  className="w-8 h-8 rounded-full bg-primary flex items-center justify-center shrink-0 disabled:opacity-50"
+                >
+                  <Send size={14} className="text-primary-foreground" />
+                </button>
+                <button
+                  onClick={() => setReplyTo(null)}
+                  className="text-muted-foreground p-1"
+                >
+                  <X size={14} />
+                </button>
+              </div>
+            )}
           </div>
         </div>
-        {replies.map((r) => renderComment(r, depth + 1))}
+
+        {/* Nested Replies */}
+        {replies.length > 0 && (
+          <div className="border-l-2 border-primary/20 ml-4 mt-1">
+            {replies.map((r) => renderComment(r, depth + 1))}
+          </div>
+        )}
       </div>
     );
   };
 
   if (loading) {
     return (
-      <div className="space-y-2 animate-skeleton-pulse">
-        <div className="h-4 w-32 bg-muted rounded" />
-        <div className="h-10 w-full bg-muted rounded" />
+      <div className="space-y-3">
+        {[1, 2].map((i) => (
+          <div key={i} className="flex gap-2 animate-pulse">
+            <div className="w-8 h-8 rounded-full bg-muted" />
+            <div className="flex-1 space-y-1.5">
+              <div className="h-3 w-20 bg-muted rounded" />
+              <div className="h-10 w-3/4 bg-muted rounded-2xl" />
+            </div>
+          </div>
+        ))}
       </div>
     );
   }
 
   return (
-    <div className="space-y-2">
-      <h3 className="font-semibold text-sm">মন্তব্য ({comments.length})</h3>
+    <div className="space-y-3">
+      <p className="text-sm font-bold">মন্তব্যসমূহ ({comments.length})</p>
 
-      {rootComments.map((c) => renderComment(c, 0))}
+      {/* Comment List */}
+      <div className="space-y-3">
+        {rootComments.length > 0 ? (
+          rootComments.map((c) => renderComment(c, 0))
+        ) : (
+          <p className="text-[13px] text-muted-foreground">কোনো মন্তব্য নেই।</p>
+        )}
+      </div>
 
-      {replyTo && (
-        <div className="flex items-center gap-1 text-xs text-primary">
-          <Reply size={12} />
-          <span>উত্তর দিচ্ছেন...</span>
-          <button onClick={() => setReplyTo(null)} className="text-muted-foreground">
-            <X size={12} />
+      {/* Main Comment Input */}
+      {!replyTo && (
+        <div className="flex items-center gap-2 mt-2">
+          <div className="w-8 h-8 rounded-full bg-muted flex items-center justify-center shrink-0">
+            <User size={14} className="text-muted-foreground" />
+          </div>
+          <input
+            value={text}
+            onChange={(e) => setText(e.target.value)}
+            placeholder={user ? "মন্তব্য লিখুন..." : "লগইন করুন"}
+            disabled={!user}
+            className="flex-1 bg-muted border-none rounded-full px-4 py-2.5 text-[13px] outline-none focus:bg-border/60 disabled:opacity-50"
+            onKeyDown={(e) => e.key === "Enter" && handleSubmit()}
+          />
+          <button
+            onClick={handleSubmit}
+            disabled={!user || !text.trim()}
+            className="w-9 h-9 rounded-full bg-primary flex items-center justify-center shrink-0 disabled:opacity-50"
+          >
+            <Send size={16} className="text-primary-foreground" />
           </button>
         </div>
       )}
 
-      <div className="flex gap-2">
-        <input
-          value={text}
-          onChange={(e) => setText(e.target.value)}
-          placeholder={user ? "মন্তব্য লিখুন..." : "লগইন করুন"}
-          disabled={!user}
-          className="flex-1 text-sm border border-input rounded-lg px-3 py-2 bg-background disabled:opacity-50"
-          onKeyDown={(e) => e.key === "Enter" && handleSubmit()}
-        />
-        <button
-          onClick={handleSubmit}
-          disabled={!user || !text.trim()}
-          className="bg-primary text-primary-foreground p-2 rounded-lg disabled:opacity-50"
-        >
-          <Send size={16} />
-        </button>
-      </div>
+      {/* Login Prompt */}
+      {!user && (
+        <div className="bg-accent rounded-xl p-3 flex items-center gap-3">
+          <p className="text-[13px] text-accent-foreground font-medium flex-1">
+            মন্তব্য করতে লগইন করুন
+          </p>
+          <a
+            href="/login"
+            className="bg-primary text-primary-foreground px-4 py-1.5 rounded-lg text-[13px] font-bold whitespace-nowrap"
+          >
+            লগইন
+          </a>
+        </div>
+      )}
     </div>
   );
 }

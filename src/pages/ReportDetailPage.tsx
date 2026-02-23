@@ -8,7 +8,7 @@ import CommentSection from "@/components/CommentSection";
 import ImageCarousel from "@/components/ImageCarousel";
 import LinkPreview from "@/components/LinkPreview";
 import LinkifyText from "@/components/LinkifyText";
-import { ArrowLeft, MapPin, CheckCircle, AlertTriangle, HelpCircle, Share2, Loader2 } from "lucide-react";
+import { ArrowLeft, MapPin, CheckCircle, AlertTriangle, HelpCircle, Share2, Loader2, User } from "lucide-react";
 import { toast } from "sonner";
 
 export default function ReportDetailPage() {
@@ -95,73 +95,108 @@ export default function ReportDetailPage() {
     );
   }
 
+  const date = report.createdAt?.toDate
+    ? report.createdAt.toDate().toLocaleDateString("bn-BD")
+    : "অজানা তারিখ";
+
   const voteButtons = [
-    { type: "true" as const, label: "এটি সত্য", icon: CheckCircle, color: "text-vote-true border-vote-true/30" },
-    { type: "suspicious" as const, label: "সন্দেহজনক", icon: AlertTriangle, color: "text-vote-suspicious border-vote-suspicious/30" },
-    { type: "needEvidence" as const, label: "প্রমাণ দরকার", icon: HelpCircle, color: "text-vote-evidence border-vote-evidence/30" },
+    { type: "true" as const, label: "সত্য", icon: CheckCircle },
+    { type: "suspicious" as const, label: "সন্দেহজনক", icon: AlertTriangle },
+    { type: "needEvidence" as const, label: "প্রমাণ চাই", icon: HelpCircle },
   ];
 
   return (
     <div className="fixed inset-0 flex flex-col bg-background z-50">
-      <header className="flex items-center gap-3 px-4 h-14 bg-topbar text-topbar-foreground shrink-0">
-        <button onClick={() => navigate(-1)}>
-          <ArrowLeft size={20} />
+      {/* Header */}
+      <header className="flex items-center gap-3 px-4 h-14 bg-card border-b border-border shrink-0 sticky top-0 z-10">
+        <button
+          onClick={() => navigate(-1)}
+          className="w-9 h-9 rounded-full bg-muted flex items-center justify-center"
+        >
+          <ArrowLeft size={18} />
         </button>
-        <h1 className="text-sm font-bold truncate flex-1">রিপোর্ট বিস্তারিত</h1>
-        <button onClick={handleShare}>
-          <Share2 size={18} />
+        <h1 className="text-base font-bold flex-1">সম্পূর্ণ রিপোর্ট</h1>
+        <button onClick={handleShare} className="p-2">
+          <Share2 size={18} className="text-muted-foreground" />
         </button>
       </header>
 
-      <div className="flex-1 overflow-y-auto p-4 space-y-4 pb-8">
-        <span className="text-xs font-semibold bg-accent text-accent-foreground px-2.5 py-1 rounded-full">
-          {report.corruptionType}
-        </span>
-
-        <LinkifyText
-          text={report.description}
-          className="text-sm leading-relaxed whitespace-pre-wrap"
-        />
-
-        {report.evidenceBase64?.length > 0 && (
-          <div className="space-y-2">
-            <p className="text-xs font-semibold text-muted-foreground">প্রমাণ (ছবি)</p>
-            <ImageCarousel images={report.evidenceBase64} />
+      <div className="flex-1 overflow-y-auto">
+        {/* Report Card */}
+        <div className="bg-card">
+          {/* Card Header - Avatar + Meta */}
+          <div className="flex items-center gap-2.5 px-4 py-3">
+            <div className="w-10 h-10 rounded-full bg-accent flex items-center justify-center shrink-0">
+              <User size={20} className="text-primary" />
+            </div>
+            <div className="flex-1 min-w-0">
+              <p className="text-[13px] font-semibold">বেনামী</p>
+              <p className="text-[11px] text-muted-foreground">{date}</p>
+            </div>
+            <span className="text-[10px] font-bold bg-accent text-accent-foreground px-2.5 py-1 rounded-full">
+              {report.corruptionType}
+            </span>
           </div>
-        )}
 
-        {report.evidenceLinks?.length > 0 && (
-          <div className="space-y-2">
-            <p className="text-xs font-semibold text-muted-foreground">প্রমাণ (লিংক)</p>
-            {report.evidenceLinks.map((link, i) => (
-              <LinkPreview key={i} url={link} />
+          {/* Description */}
+          <div className="px-4 pb-3">
+            <LinkifyText
+              text={report.description}
+              className="text-sm leading-relaxed whitespace-pre-wrap"
+            />
+          </div>
+
+          {/* Evidence Images */}
+          {report.evidenceBase64?.length > 0 && (
+            <ImageCarousel images={report.evidenceBase64} />
+          )}
+
+          {/* Evidence Links */}
+          {report.evidenceLinks?.length > 0 && (
+            <div className="px-4 py-2 space-y-2">
+              {report.evidenceLinks.map((link, i) => (
+                <LinkPreview key={i} url={link} />
+              ))}
+            </div>
+          )}
+
+          {/* Location */}
+          <div className="flex items-center gap-1.5 px-4 py-2 text-[12px] text-muted-foreground">
+            <MapPin size={14} className="text-primary shrink-0" />
+            <span>{report.location?.address || "অজানা অবস্থান"}</span>
+          </div>
+
+          {/* Vote Bar */}
+          <div className="flex border-t border-border">
+            {voteButtons.map((v) => (
+              <button
+                key={v.type}
+                onClick={() => handleVote(v.type)}
+                disabled={voting}
+                className={`flex-1 flex flex-col items-center gap-1 py-2.5 transition-all border-r border-border last:border-r-0 ${
+                  userVote === v.type
+                    ? "bg-accent"
+                    : "active:bg-muted"
+                }`}
+              >
+                <v.icon
+                  size={18}
+                  className={userVote === v.type ? "text-primary" : "text-muted-foreground"}
+                />
+                <span
+                  className={`text-[10px] font-medium ${
+                    userVote === v.type ? "text-primary" : "text-muted-foreground"
+                  }`}
+                >
+                  {v.label} ({report.votes?.[v.type] || 0})
+                </span>
+              </button>
             ))}
           </div>
-        )}
-
-        <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
-          <MapPin size={14} />
-          <span>{report.location?.address || "অজানা অবস্থান"}</span>
         </div>
 
-        <div className="flex gap-2">
-          {voteButtons.map((v) => (
-            <button
-              key={v.type}
-              onClick={() => handleVote(v.type)}
-              disabled={voting}
-              className={`flex-1 flex flex-col items-center gap-1 py-2.5 rounded-lg border text-xs font-medium transition-all ${
-                userVote === v.type ? `${v.color} bg-accent scale-105` : "border-border text-muted-foreground"
-              }`}
-            >
-              <v.icon size={18} />
-              <span>{v.label}</span>
-              <span className="font-bold">{report.votes?.[v.type] || 0}</span>
-            </button>
-          ))}
-        </div>
-
-        <div className="border-t border-border pt-4">
+        {/* Comments Section */}
+        <div className="px-4 py-4">
           <CommentSection reportId={report.id} />
         </div>
       </div>
