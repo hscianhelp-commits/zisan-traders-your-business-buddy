@@ -29,9 +29,9 @@ export default function ReportCard({ report, showStatus }: ReportCardProps) {
   };
 
   const statusLabels: Record<string, string> = {
-    pending: "মুলতুবি",
-    approved: "অনুমোদিত",
-    rejected: "প্রত্যাখ্যাত",
+    pending: "Pending",
+    approved: "Approved",
+    rejected: "Rejected",
   };
 
   const date = report.createdAt?.toDate
@@ -48,6 +48,25 @@ export default function ReportCard({ report, showStatus }: ReportCardProps) {
     }
   };
 
+  // Collect all displayable images: base64 + image URLs from evidence links
+  const allImages = [
+    ...(report.evidenceBase64 || []),
+    ...(report.evidenceLinks || []).filter((url) => /\.(jpg|jpeg|png|gif|webp|svg|bmp)(\?.*)?$/i.test(url)),
+  ];
+
+  // Video URLs from evidence links
+  const videoLinks = (report.evidenceLinks || []).filter((url) =>
+    /\.(mp4|webm|ogg)(\?.*)?$/i.test(url) || /(?:youtube\.com\/watch\?v=|youtu\.be\/)/.test(url)
+  );
+
+  // Other links (non-image, non-video)
+  const otherLinks = (report.evidenceLinks || []).filter(
+    (url) =>
+      !/\.(jpg|jpeg|png|gif|webp|svg|bmp)(\?.*)?$/i.test(url) &&
+      !/\.(mp4|webm|ogg)(\?.*)?$/i.test(url) &&
+      !/(?:youtube\.com\/watch\?v=|youtu\.be\/)/.test(url)
+  );
+
   return (
     <div
       onClick={() => navigate(`/reports/${report.id}`)}
@@ -59,7 +78,7 @@ export default function ReportCard({ report, showStatus }: ReportCardProps) {
           <User size={18} className="text-primary" />
         </div>
         <div className="flex-1 min-w-0">
-          <p className="text-[13px] font-semibold">বেনামী</p>
+          <p className="text-[13px] font-semibold">Anonymous</p>
           <p className="text-[11px] text-muted-foreground">{date}</p>
         </div>
         <div className="flex items-center gap-1.5">
@@ -82,16 +101,41 @@ export default function ReportCard({ report, showStatus }: ReportCardProps) {
         />
       </div>
 
-      {/* Evidence */}
-      {report.evidenceBase64?.length > 0 && (
+      {/* Evidence Images (base64 + image URLs) */}
+      {allImages.length > 0 && (
         <div onClick={(e) => e.stopPropagation()}>
-          <ImageCarousel images={report.evidenceBase64} />
+          <ImageCarousel images={allImages} />
         </div>
       )}
 
-      {report.evidenceLinks?.length > 0 && !report.evidenceBase64?.length && (
-        <div onClick={(e) => e.stopPropagation()} className="px-3 space-y-1">
-          {report.evidenceLinks.slice(0, 2).map((link, i) => (
+      {/* Video previews */}
+      {videoLinks.length > 0 && (
+        <div onClick={(e) => e.stopPropagation()} className="px-3 pb-2 space-y-2">
+          {videoLinks.map((url, i) => {
+            const ytMatch = /(?:youtube\.com\/watch\?v=|youtu\.be\/)([a-zA-Z0-9_-]+)/.exec(url);
+            if (ytMatch) {
+              return (
+                <a key={i} href={url} target="_blank" rel="noopener noreferrer" className="block">
+                  <img
+                    src={`https://img.youtube.com/vi/${ytMatch[1]}/hqdefault.jpg`}
+                    alt="YouTube"
+                    className="w-full rounded-lg object-cover max-h-48"
+                  />
+                  <span className="text-[10px] text-primary truncate block mt-1">▶ YouTube Video</span>
+                </a>
+              );
+            }
+            return (
+              <video key={i} src={url} controls preload="metadata" className="w-full rounded-lg max-h-48" />
+            );
+          })}
+        </div>
+      )}
+
+      {/* Other links */}
+      {otherLinks.length > 0 && (
+        <div onClick={(e) => e.stopPropagation()} className="px-3 pb-2 space-y-1">
+          {otherLinks.slice(0, 2).map((link, i) => (
             <LinkPreview key={i} url={link} />
           ))}
         </div>
@@ -124,14 +168,14 @@ export default function ReportCard({ report, showStatus }: ReportCardProps) {
           className="flex items-center gap-1 px-3 py-2 text-[12px] text-muted-foreground font-medium border-l border-border"
         >
           <MessageCircle size={14} />
-          মন্তব্য {commentCount > 0 && `(${commentCount})`}
+          Comments {commentCount > 0 && `(${commentCount})`}
         </button>
         <button
           onClick={handleShare}
           className="flex items-center gap-1 px-3 py-2 text-[12px] text-muted-foreground font-medium border-l border-border"
         >
           <Share2 size={14} />
-          শেয়ার
+          Share
         </button>
       </div>
     </div>

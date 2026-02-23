@@ -1,38 +1,50 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { collection, query, where, onSnapshot } from "firebase/firestore";
 import { db } from "@/lib/firebase";
 import { Report, CORRUPTION_TYPES } from "@/types";
 import { useNavigate } from "react-router-dom";
-import { Loader2, Navigation } from "lucide-react";
-import { MapContainer, TileLayer, CircleMarker, Popup, useMap } from "react-leaflet";
-import L from "leaflet";
+import { Loader2 } from "lucide-react";
 import "leaflet/dist/leaflet.css";
-
-// Fix default marker icons
-delete (L.Icon.Default.prototype as any)._getIconUrl;
-L.Icon.Default.mergeOptions({
-  iconRetinaUrl: "https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/images/marker-icon-2x.png",
-  iconUrl: "https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/images/marker-icon.png",
-  shadowUrl: "https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/images/marker-shadow.png",
-});
-
-function FlyToLocation({ lat, lng }: { lat: number; lng: number }) {
-  const map = useMap();
-  useEffect(() => {
-    map.flyTo([lat, lng], 13);
-  }, [lat, lng, map]);
-  return null;
-}
+import L from "leaflet";
 
 export default function MapPage() {
   const navigate = useNavigate();
+  const mapRef = useRef<HTMLDivElement>(null);
+  const leafletMap = useRef<L.Map | null>(null);
+  const markersRef = useRef<L.CircleMarker[]>([]);
   const [reports, setReports] = useState<Report[]>([]);
   const [loading, setLoading] = useState(true);
-  const [center, setCenter] = useState<[number, number]>([23.8103, 90.4125]);
-  const [locating, setLocating] = useState(false);
   const [filterType, setFilterType] = useState("all");
-  const [flyTarget, setFlyTarget] = useState<[number, number] | null>(null);
+  const [locating, setLocating] = useState(false);
 
+  // Initialize map once
+  useEffect(() => {
+    if (!mapRef.current || leafletMap.current) return;
+    
+    const map = L.map(mapRef.current, {
+      center: [23.8103, 90.4125],
+      zoom: 7,
+      zoomControl: false,
+    });
+
+    L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
+      attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OSM</a>',
+    }).addTo(map);
+
+    leafletMap.current = map;
+
+    // Force resize after mount
+    setTimeout(() => {
+      map.invalidateSize();
+    }, 200);
+
+    return () => {
+      map.remove();
+      leafletMap.current = null;
+    };
+  }, []);
+
+  // Load reports
   useEffect(() => {
     const q = query(collection(db, "reports"), where("status", "==", "approved"));
     const unsub = onSnapshot(q, (snap) => {
@@ -42,72 +54,63 @@ export default function MapPage() {
     return unsub;
   }, []);
 
+  // Update markers when reports or filter changes
+  useEffect(() => {
+    if (!leafletMap.current) return;
+    
+    // Clear existing markers
+    markersRef.current.forEach((m) => m.remove());
+    markersRef.current = [];
+
+    const filtered = reports.filter((r) => {
+      if (filterType === "all") return true;
+      return r.corruptionType === filterType;
+    });
+
+    filtered.forEach((report) => {
+      if (!report.location?.lat || !report.location?.lng) return;
+      
+      const marker = L.circleMarker([report.location.lat, report.location.lng], {
+        radius: 10,
+        color: "hsl(0, 72%, 51%)",
+        fillColor: "hsl(0, 72%, 51%)",
+        fillOpacity: 0.7,
+        weight: 2,
+      }).addTo(leafletMap.current!);
+
+      marker.bindPopup(`
+        <div style="font-family:'Hind Siliguri',sans-serif;max-width:220px;">
+          <h4 style="font-size:13px;font-weight:bold;margin-bottom:4px;">${report.corruptionType}</h4>
+          <p style="font-size:12px;color:#555;margin-bottom:4px;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;">${report.description}</p>
+          <p style="font-size:11px;color:#888;margin-bottom:6px;">📍 ${report.location?.address || ""}</p>
+          <a href="/reports/${report.id}" style="font-size:12px;color:#E53935;font-weight:600;text-decoration:none;">বিস্তারিত দেখুন →</a>
+        </div>
+      `);
+
+      markersRef.current.push(marker);
+    });
+  }, [reports, filterType]);
+
   const goToMyLocation = () => {
     setLocating(true);
     navigator.geolocation.getCurrentPosition(
       (pos) => {
-        setFlyTarget([pos.coords.latitude, pos.coords.longitude]);
+        leafletMap.current?.flyTo([pos.coords.latitude, pos.coords.longitude], 13);
         setLocating(false);
       },
       () => setLocating(false)
     );
   };
 
-  const filteredReports = reports.filter((r) => {
-    if (filterType === "all") return true;
-    return r.corruptionType === filterType;
-  });
-
-  if (loading) {
-    return (
-      <div className="flex items-center justify-center h-full">
-        <Loader2 className="animate-spin text-primary" size={32} />
-      </div>
-    );
-  }
-
   return (
-    <div className="relative h-full">
-      <MapContainer center={center} zoom={7} className="h-full w-full z-0" zoomControl={false}>
-        <TileLayer
-          attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OSM</a>'
-          url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
-        />
-        {flyTarget && <FlyToLocation lat={flyTarget[0]} lng={flyTarget[1]} />}
-        {filteredReports.map((report) =>
-          report.location?.lat && report.location?.lng ? (
-            <CircleMarker
-              key={report.id}
-              center={[report.location.lat, report.location.lng]}
-              radius={10}
-              pathOptions={{
-                color: "hsl(var(--primary))",
-                fillColor: "hsl(var(--primary))",
-                fillOpacity: 0.7,
-                weight: 2,
-              }}
-            >
-              <Popup>
-                <div className="max-w-[220px] font-sans">
-                  <h4 className="font-bold text-[13px] mb-1">{report.corruptionType}</h4>
-                  <p className="text-[12px] text-muted-foreground line-clamp-2 mb-1">
-                    {report.description}
-                  </p>
-                  <p className="text-[11px] text-muted-foreground mb-2">
-                    📍 {report.location?.address || ""}
-                  </p>
-                  <button
-                    onClick={() => navigate(`/reports/${report.id}`)}
-                    className="text-[12px] text-primary font-semibold"
-                  >
-                    বিস্তারিত দেখুন →
-                  </button>
-                </div>
-              </Popup>
-            </CircleMarker>
-          ) : null
-        )}
-      </MapContainer>
+    <div className="relative" style={{ height: "calc(100vh - 56px - 64px)" }}>
+      <div ref={mapRef} style={{ height: "100%", width: "100%" }} />
+
+      {loading && (
+        <div className="absolute inset-0 flex items-center justify-center bg-background/80 z-[999]">
+          <Loader2 className="animate-spin text-primary" size={32} />
+        </div>
+      )}
 
       {/* Map Controls Bar */}
       <div className="absolute top-3 left-3 right-3 z-[1000] bg-card rounded-xl px-3 py-2.5 shadow-md flex gap-2 items-center">
@@ -129,7 +132,7 @@ export default function MapPage() {
           {locating ? (
             <Loader2 size={14} className="animate-spin" />
           ) : (
-            <Navigation size={14} />
+            "📍"
           )}
           আমার অবস্থান
         </button>

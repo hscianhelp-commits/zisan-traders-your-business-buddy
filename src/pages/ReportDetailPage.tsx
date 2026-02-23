@@ -3,7 +3,7 @@ import { useParams, useNavigate } from "react-router-dom";
 import { doc, onSnapshot, getDoc, updateDoc, increment, setDoc, deleteDoc } from "firebase/firestore";
 import { db } from "@/lib/firebase";
 import { useAuth } from "@/contexts/AuthContext";
-import { Report, Vote } from "@/types";
+import { Report } from "@/types";
 import CommentSection from "@/components/CommentSection";
 import ImageCarousel from "@/components/ImageCarousel";
 import LinkPreview from "@/components/LinkPreview";
@@ -72,7 +72,7 @@ export default function ReportDetailPage() {
       navigator.share({ title: "দুর্নীতি রিপোর্ট", url });
     } else {
       navigator.clipboard.writeText(url);
-      toast.success("লিংক কপি হয়েছে");
+      toast.success("Link copied");
     }
   };
 
@@ -105,6 +105,23 @@ export default function ReportDetailPage() {
     { type: "needEvidence" as const, label: "প্রমাণ চাই", icon: HelpCircle },
   ];
 
+  // Collect all displayable images
+  const allImages = [
+    ...(report.evidenceBase64 || []),
+    ...(report.evidenceLinks || []).filter((url) => /\.(jpg|jpeg|png|gif|webp|svg|bmp)(\?.*)?$/i.test(url)),
+  ];
+
+  const videoLinks = (report.evidenceLinks || []).filter((url) =>
+    /\.(mp4|webm|ogg)(\?.*)?$/i.test(url) || /(?:youtube\.com\/watch\?v=|youtu\.be\/)/.test(url)
+  );
+
+  const otherLinks = (report.evidenceLinks || []).filter(
+    (url) =>
+      !/\.(jpg|jpeg|png|gif|webp|svg|bmp)(\?.*)?$/i.test(url) &&
+      !/\.(mp4|webm|ogg)(\?.*)?$/i.test(url) &&
+      !/(?:youtube\.com\/watch\?v=|youtu\.be\/)/.test(url)
+  );
+
   return (
     <div className="fixed inset-0 flex flex-col bg-background z-50">
       {/* Header */}
@@ -122,15 +139,14 @@ export default function ReportDetailPage() {
       </header>
 
       <div className="flex-1 overflow-y-auto">
-        {/* Report Card */}
         <div className="bg-card">
-          {/* Card Header - Avatar + Meta */}
+          {/* Card Header */}
           <div className="flex items-center gap-2.5 px-4 py-3">
             <div className="w-10 h-10 rounded-full bg-accent flex items-center justify-center shrink-0">
               <User size={20} className="text-primary" />
             </div>
             <div className="flex-1 min-w-0">
-              <p className="text-[13px] font-semibold">বেনামী</p>
+              <p className="text-[13px] font-semibold">Anonymous</p>
               <p className="text-[11px] text-muted-foreground">{date}</p>
             </div>
             <span className="text-[10px] font-bold bg-accent text-accent-foreground px-2.5 py-1 rounded-full">
@@ -147,14 +163,38 @@ export default function ReportDetailPage() {
           </div>
 
           {/* Evidence Images */}
-          {report.evidenceBase64?.length > 0 && (
-            <ImageCarousel images={report.evidenceBase64} />
+          {allImages.length > 0 && (
+            <ImageCarousel images={allImages} />
           )}
 
-          {/* Evidence Links */}
-          {report.evidenceLinks?.length > 0 && (
+          {/* Video previews */}
+          {videoLinks.length > 0 && (
             <div className="px-4 py-2 space-y-2">
-              {report.evidenceLinks.map((link, i) => (
+              {videoLinks.map((url, i) => {
+                const ytMatch = /(?:youtube\.com\/watch\?v=|youtu\.be\/)([a-zA-Z0-9_-]+)/.exec(url);
+                if (ytMatch) {
+                  return (
+                    <a key={i} href={url} target="_blank" rel="noopener noreferrer" className="block">
+                      <img
+                        src={`https://img.youtube.com/vi/${ytMatch[1]}/hqdefault.jpg`}
+                        alt="YouTube"
+                        className="w-full rounded-lg object-cover max-h-48"
+                      />
+                      <span className="text-[10px] text-primary truncate block mt-1">▶ YouTube Video</span>
+                    </a>
+                  );
+                }
+                return (
+                  <video key={i} src={url} controls preload="metadata" className="w-full rounded-lg max-h-64" />
+                );
+              })}
+            </div>
+          )}
+
+          {/* Other Evidence Links */}
+          {otherLinks.length > 0 && (
+            <div className="px-4 py-2 space-y-2">
+              {otherLinks.map((link, i) => (
                 <LinkPreview key={i} url={link} />
               ))}
             </div>
@@ -174,9 +214,7 @@ export default function ReportDetailPage() {
                 onClick={() => handleVote(v.type)}
                 disabled={voting}
                 className={`flex-1 flex flex-col items-center gap-1 py-2.5 transition-all border-r border-border last:border-r-0 ${
-                  userVote === v.type
-                    ? "bg-accent"
-                    : "active:bg-muted"
+                  userVote === v.type ? "bg-accent" : "active:bg-muted"
                 }`}
               >
                 <v.icon
