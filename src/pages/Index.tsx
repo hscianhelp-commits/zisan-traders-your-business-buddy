@@ -75,34 +75,39 @@ export default function Index() {
 
   return (
     <div className="pb-2">
-      {/* Always-open filter bar like index.html */}
-      <div className="sticky top-0 z-10 bg-card border-b border-border px-3 py-2.5 flex items-center gap-2 overflow-x-auto scrollbar-hide">
-        <button
-          onClick={() => setFilterType("all")}
-          className={`text-[12px] px-3 py-1.5 rounded-full border font-medium whitespace-nowrap transition-colors ${
-            filterType === "all"
-              ? "bg-primary border-primary text-primary-foreground"
-              : "border-border text-muted-foreground bg-card"
-          }`}
-        >
-          সব
-        </button>
-        {CORRUPTION_TYPES.map((type) => (
+      {/* Filter bar: scrollable chips + fixed nearby button */}
+      <div className="sticky top-0 z-10 bg-card border-b border-border px-3 py-2.5 flex items-center gap-0">
+        {/* Scrollable filter area */}
+        <div className="flex-1 flex items-center gap-2 overflow-x-auto scrollbar-hide min-w-0 pr-2">
           <button
-            key={type}
-            onClick={() => setFilterType(type === filterType ? "all" : type)}
-            className={`text-[12px] px-3 py-1.5 rounded-full border font-medium whitespace-nowrap transition-colors ${
-              type === filterType
+            onClick={() => setFilterType("all")}
+            className={`text-[12px] px-3 py-1.5 rounded-full border font-medium whitespace-nowrap transition-colors shrink-0 ${
+              filterType === "all"
                 ? "bg-primary border-primary text-primary-foreground"
                 : "border-border text-muted-foreground bg-card"
             }`}
           >
-            {type}
+            সব
           </button>
-        ))}
+          {CORRUPTION_TYPES.map((type) => (
+            <button
+              key={type}
+              onClick={() => setFilterType(type === filterType ? "all" : type)}
+              className={`text-[12px] px-3 py-1.5 rounded-full border font-medium whitespace-nowrap transition-colors shrink-0 ${
+                type === filterType
+                  ? "bg-primary border-primary text-primary-foreground"
+                  : "border-border text-muted-foreground bg-card"
+              }`}
+            >
+              {type}
+            </button>
+          ))}
+        </div>
+
+        {/* Fixed nearby button */}
         <button
           onClick={handleNearby}
-          className={`flex items-center gap-1 text-[12px] px-3 py-1.5 rounded-full font-semibold whitespace-nowrap ml-auto shrink-0 ${
+          className={`flex items-center gap-1 text-[12px] px-3 py-1.5 rounded-full font-semibold whitespace-nowrap shrink-0 ${
             nearbyMode
               ? "bg-primary text-primary-foreground"
               : "bg-primary text-primary-foreground"
@@ -113,7 +118,7 @@ export default function Index() {
         </button>
       </div>
 
-      <div className="p-4 space-y-3">
+      <div className="p-4">
         {loading ? (
           <div className="space-y-3">
             {[1, 2, 3].map((i) => (
@@ -126,7 +131,7 @@ export default function Index() {
             <p className="text-sm mt-1">প্রথম রিপোর্ট জমা দিন!</p>
           </div>
         ) : (
-          <div className="space-y-3">
+          <div className="space-y-3 md:grid md:grid-cols-2 md:gap-4 md:space-y-0">
             {filtered.map((report) => (
               <ReportCard key={report.id} report={report} />
             ))}
