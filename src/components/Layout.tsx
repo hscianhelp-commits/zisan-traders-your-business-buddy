@@ -1,7 +1,8 @@
-import { ReactNode } from "react";
+import { ReactNode, useState, useRef, useEffect } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
-import { Home, FilePlus, MapPin, FileText, LogIn, LogOut } from "lucide-react";
+import { Home, FilePlus, MapPin, FileText, LogIn, LogOut, ChevronDown } from "lucide-react";
 import { useAuth } from "@/contexts/AuthContext";
+import { useIPAddress } from "@/hooks/useIPAddress";
 
 const tabs = [
   { path: "/", icon: Home, label: "Home" },
@@ -14,8 +15,21 @@ export default function Layout({ children }: { children: ReactNode }) {
   const navigate = useNavigate();
   const location = useLocation();
   const { user, signOut } = useAuth();
+  const { ip, locationInfo, loading: ipLoading } = useIPAddress();
+  const [ipExpanded, setIpExpanded] = useState(false);
+  const expandRef = useRef<HTMLDivElement>(null);
 
   const isTabPage = tabs.some((t) => t.path === location.pathname);
+
+  useEffect(() => {
+    const handler = (e: MouseEvent) => {
+      if (expandRef.current && !expandRef.current.contains(e.target as Node)) {
+        setIpExpanded(false);
+      }
+    };
+    document.addEventListener("mousedown", handler);
+    return () => document.removeEventListener("mousedown", handler);
+  }, []);
 
   if (!isTabPage) {
     return <div className="fixed inset-0 flex flex-col bg-background">{children}</div>;
@@ -23,9 +37,30 @@ export default function Layout({ children }: { children: ReactNode }) {
 
   return (
     <div className="fixed inset-0 flex flex-col bg-background">
-      <header className="flex items-center justify-between px-4 h-14 bg-topbar text-topbar-foreground shrink-0 z-50">
+      <header className="flex items-center justify-between px-4 h-14 bg-topbar text-topbar-foreground shrink-0 z-50 relative">
         <h1 className="text-lg font-bold tracking-tight">Corruption Alert</h1>
         <div className="flex items-center gap-2">
+          {/* IP Badge */}
+          <div ref={expandRef} className="relative">
+            <button
+              onClick={() => setIpExpanded(!ipExpanded)}
+              className="flex items-center gap-1 bg-white/15 border border-white/25 rounded-full px-2.5 py-1 text-[11px] font-semibold text-white transition-all active:bg-white/25"
+            >
+              {ipLoading ? "..." : ip || "Unknown"}
+              <ChevronDown size={10} className={`transition-transform ${ipExpanded ? "rotate-180" : ""}`} />
+            </button>
+            {ipExpanded && (
+              <div className="absolute top-10 right-0 bg-card text-foreground rounded-xl p-3 shadow-lg z-[999] min-w-[200px] border border-border">
+                <p className="text-xs text-muted-foreground mb-1">
+                  IP: <span className="font-semibold text-foreground">{ip || "Unknown"}</span>
+                </p>
+                <p className="text-xs text-muted-foreground">
+                  Location: <span className="font-semibold text-foreground">{locationInfo || "Unknown"}</span>
+                </p>
+              </div>
+            )}
+          </div>
+
           {user ? (
             <button onClick={signOut} className="p-1.5 rounded-full bg-topbar-foreground/15">
               <LogOut size={14} />
@@ -49,10 +84,13 @@ export default function Layout({ children }: { children: ReactNode }) {
             <button
               key={tab.path}
               onClick={() => navigate(tab.path)}
-              className={`flex flex-col items-center gap-1 px-4 py-2 rounded-xl transition-all ${
+              className={`flex flex-col items-center gap-1 px-4 py-2 rounded-xl transition-all relative ${
                 active ? "text-primary scale-105" : "text-muted-foreground"
               }`}
             >
+              {active && (
+                <span className="absolute top-0 left-[20%] right-[20%] h-0.5 bg-primary rounded-b" />
+              )}
               <tab.icon size={20} strokeWidth={active ? 2.5 : 1.5} />
               <span className="text-[10px] font-semibold">{tab.label}</span>
             </button>

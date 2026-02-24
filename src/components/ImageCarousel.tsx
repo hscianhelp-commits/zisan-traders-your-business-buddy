@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef, useCallback } from "react";
 import { X, ChevronLeft, ChevronRight } from "lucide-react";
 
 interface ImageCarouselProps {
@@ -9,83 +9,81 @@ interface ImageCarouselProps {
 export default function ImageCarousel({ images, autoScrollInterval = 3000 }: ImageCarouselProps) {
   const [currentIndex, setCurrentIndex] = useState(0);
   const [fullscreen, setFullscreen] = useState(false);
-  const scrollRef = useRef<HTMLDivElement>(null);
+  const trackRef = useRef<HTMLDivElement>(null);
   const intervalRef = useRef<ReturnType<typeof setInterval>>();
 
-  useEffect(() => {
+  const startAutoSlide = useCallback(() => {
     if (images.length <= 1) return;
+    clearInterval(intervalRef.current);
     intervalRef.current = setInterval(() => {
       setCurrentIndex((prev) => (prev + 1) % images.length);
     }, autoScrollInterval);
-    return () => clearInterval(intervalRef.current);
   }, [images.length, autoScrollInterval]);
 
   useEffect(() => {
-    if (scrollRef.current) {
-      scrollRef.current.scrollTo({
-        left: currentIndex * scrollRef.current.offsetWidth,
-        behavior: "smooth",
-      });
-    }
-  }, [currentIndex]);
+    startAutoSlide();
+    return () => clearInterval(intervalRef.current);
+  }, [startAutoSlide]);
 
-  const handleScroll = () => {
-    if (scrollRef.current) {
-      const index = Math.round(scrollRef.current.scrollLeft / scrollRef.current.offsetWidth);
-      if (index !== currentIndex) {
-        setCurrentIndex(index);
-        // Reset auto-scroll timer on manual scroll
-        if (intervalRef.current) clearInterval(intervalRef.current);
-        intervalRef.current = setInterval(() => {
-          setCurrentIndex((prev) => (prev + 1) % images.length);
-        }, autoScrollInterval);
-      }
-    }
+  const goTo = (index: number) => {
+    setCurrentIndex(index);
+    startAutoSlide();
   };
 
   if (images.length === 0) return null;
 
   return (
     <>
-      <div className="relative">
-        <div
-          ref={scrollRef}
-          onScroll={handleScroll}
-          className="flex overflow-x-auto snap-x snap-mandatory scrollbar-hide"
-          style={{ scrollbarWidth: "none", msOverflowStyle: "none", WebkitOverflowScrolling: "touch" }}
-        >
+      {/* Inline Slider */}
+      <div className="relative bg-black overflow-hidden">
+        <div ref={trackRef} className="relative overflow-hidden">
           {images.map((img, i) => (
             <div
               key={i}
-              className="w-full shrink-0 snap-center cursor-pointer"
-              onClick={() => {
-                setFullscreen(true);
-                setCurrentIndex(i);
+              className="w-full transition-transform duration-500 ease-out"
+              style={{
+                transform: `translateX(${(i - currentIndex) * 100}%`,
+                position: i === 0 ? "relative" : "absolute",
+                top: 0,
+                left: 0,
               }}
             >
               <img
                 src={img}
                 alt=""
-                className="w-full aspect-video object-cover rounded-lg pointer-events-auto"
-                style={{ pointerEvents: "auto" }}
+                className="w-full max-h-[320px] min-h-[180px] object-cover block cursor-pointer"
+                onClick={() => {
+                  setFullscreen(true);
+                  setCurrentIndex(i);
+                }}
               />
             </div>
           ))}
         </div>
+
+        {/* Dots */}
         {images.length > 1 && (
-          <div className="absolute bottom-2 left-0 right-0 flex justify-center gap-1">
+          <div className="absolute bottom-2 left-0 right-0 flex justify-center gap-[5px] pointer-events-none">
             {images.map((_, i) => (
               <span
                 key={i}
-                className={`w-1.5 h-1.5 rounded-full transition-all ${
-                  i === currentIndex ? "bg-primary w-3" : "bg-primary/40"
+                className={`h-1.5 rounded-full transition-all duration-300 ${
+                  i === currentIndex ? "bg-white w-4" : "bg-white/50 w-1.5"
                 }`}
               />
             ))}
           </div>
         )}
+
+        {/* Counter */}
+        {images.length > 1 && (
+          <span className="absolute top-2 right-2.5 bg-black/55 text-white text-[11px] font-semibold px-2 py-0.5 rounded-full pointer-events-none">
+            {currentIndex + 1}/{images.length}
+          </span>
+        )}
       </div>
 
+      {/* Fullscreen Viewer */}
       {fullscreen && (
         <div
           className="fixed inset-0 z-[9999] bg-black flex items-center justify-center"
@@ -97,24 +95,18 @@ export default function ImageCarousel({ images, autoScrollInterval = 3000 }: Ima
           >
             <X size={20} />
           </button>
-          
+
           {images.length > 1 && (
             <>
               <button
                 className="absolute left-2 z-10 text-white bg-white/20 rounded-full p-2"
-                onClick={(e) => {
-                  e.stopPropagation();
-                  setCurrentIndex((prev) => (prev - 1 + images.length) % images.length);
-                }}
+                onClick={(e) => { e.stopPropagation(); goTo((currentIndex - 1 + images.length) % images.length); }}
               >
                 <ChevronLeft size={24} />
               </button>
               <button
                 className="absolute right-2 z-10 text-white bg-white/20 rounded-full p-2"
-                onClick={(e) => {
-                  e.stopPropagation();
-                  setCurrentIndex((prev) => (prev + 1) % images.length);
-                }}
+                onClick={(e) => { e.stopPropagation(); goTo((currentIndex + 1) % images.length); }}
               >
                 <ChevronRight size={24} />
               </button>
@@ -124,8 +116,7 @@ export default function ImageCarousel({ images, autoScrollInterval = 3000 }: Ima
           <img
             src={images[currentIndex]}
             alt=""
-            className="max-w-full max-h-full object-contain pointer-events-auto"
-            style={{ pointerEvents: "auto" }}
+            className="max-w-full max-h-full object-contain"
             onClick={(e) => e.stopPropagation()}
           />
 
